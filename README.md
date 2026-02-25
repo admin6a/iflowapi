@@ -40,7 +40,7 @@ iflowapi/
 
 #### 克隆项目
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/admin6a/iflowapi
 cd iflowapi
 ```
 
@@ -182,7 +182,7 @@ GitHub Actions 提供完整的执行历史：
 
 ## 🤝 贡献指南
 
-欢迎提交 Issue 和 Pull Request 来改进项目！
+欢迎提交 [Issue](https://github.com/admin6a/iflowapi/issues) 和 [Pull Request](https://github.com/admin6a/iflowapi/pulls) 来改进项目！
 
 ### 开发环境设置
 
@@ -197,8 +197,8 @@ GitHub Actions 提供完整的执行历史：
 如果您遇到问题或有建议：
 
 1. 查看 [故障排除](#故障排除) 部分
-2. 检查 GitHub Issues 是否有类似问题
-3. 创建新的 Issue 描述您的问题
+2. 检查 [GitHub Issues](https://github.com/admin6a/iflowapi/issues) 是否有类似问题
+3. 创建新的 [Issue](https://github.com/admin6a/iflowapi/issues) 描述您的问题
 
 ---
 
