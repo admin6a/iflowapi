@@ -40,7 +40,7 @@ iflowapi/
 
 #### 克隆项目
 ```bash
-git clone https://github.com/admin6a/iflowapi
+git clone https://github.com/admin6a/iflowapi.git
 cd iflowapi
 ```
 
