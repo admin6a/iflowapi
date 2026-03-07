@@ -113,25 +113,17 @@ class APIManager:
             logger.error(f"API请求失败: {e}")
             raise
     
-    def simulate_browser_reset(self):
-        """模拟浏览器操作重置API密钥"""
+    def simulate_browser_reset(self, is_expiring=False):
+        """模拟浏览器操作重置API密钥
+        
+        Args:
+            is_expiring: 是否为即将过期（两步点击），否则为已过期（一步点击）
+        """
         cookie = os.getenv('IFLOW_COOKIE')
         if not cookie:
             raise ValueError("IFLOW_COOKIE环境变量未设置")
         
         logger.info("开始模拟浏览器操作重置API密钥...")
-        
-        # 获取重置前的API密钥信息
-        try:
-            api_info_before = self.get_api_key_info()
-            data_before = api_info_before.get('data', {})
-            expire_time_before = data_before.get('expireTime', '')
-            api_key_before = data_before.get('apiKeyMask', '')
-            logger.info(f"重置前API密钥: {api_key_before}")
-            logger.info(f"重置前过期时间: {expire_time_before}")
-        except Exception as e:
-            logger.warning(f"获取重置前API信息失败: {e}")
-            expire_time_before = ''
         
         # 配置Chrome选项
         chrome_options = Options()
@@ -174,101 +166,73 @@ class APIManager:
             
             self.anti_detection.human_like_delay()
             
-            # 查找并点击按钮 - 基于提供的HTML结构
-            button_selectors = [
-                ".btn_ib1Q",  # 主要按钮类名
-                "div[class*='btn']",  # 包含btn的div
-                "button:contains('重置API密钥')",  # 包含特定文本的按钮
-                "button:contains('重置')",
-                "button:contains('重新生成')",
-                "button:contains('生成')",
-                "button:contains('Reset')",
-                "button:contains('Regenerate')",
-                "button:contains('Generate')",
-                "button[type='submit']",
-                ".btn",
-                "button.btn"
-            ]
-            
-            button_found = False
-            for selector in button_selectors:
+            if is_expiring:
+                # 即将过期：两步点击
+                logger.info("即将过期模式：执行两步点击")
+                
+                # 查找并点击第一个按钮
                 try:
-                    buttons = driver.find_elements(By.CSS_SELECTOR, selector)
-                    if buttons:
-                        logger.info(f"使用选择器 '{selector}' 找到按钮，准备点击...")
-                        # 确保按钮可见且可点击
-                        WebDriverWait(driver, 5).until(
-                            EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
-                        )
-                        buttons[0].click()
-                        button_found = True
-                        break
+                    first_button = driver.find_element(By.CSS_SELECTOR, ".btn_ib1Q")
+                    logger.info("找到第一个按钮 .btn_ib1Q，准备点击...")
+                    WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, ".btn_ib1Q"))
+                    )
+                    first_button.click()
+                    logger.info("第一个按钮点击成功")
                 except Exception as e:
-                    logger.debug(f"选择器 '{selector}' 未找到按钮或不可点击: {e}")
-            
-            if not button_found:
-                # 如果所有CSS选择器都失败，尝试XPath查找
-                xpath_selectors = [
-                    "//div[contains(@class, 'btn') and contains(text(), '重置API密钥')]",
-                    "//button[contains(text(), '重置API密钥')]",
-                    "//div[contains(text(), '重置API密钥')]",
-                    "//*[contains(text(), '重置API密钥')]",
-                    "//button[contains(text(), '重置')]",
-                    "//button[contains(text(), '重新生成')]"
-                ]
+                    logger.error(f"未找到第一个按钮 .btn_ib1Q: {e}")
+                    return False
                 
-                for xpath in xpath_selectors:
-                    try:
-                        buttons = driver.find_elements(By.XPATH, xpath)
-                        if buttons:
-                            logger.info(f"使用XPath '{xpath}' 找到按钮，准备点击...")
-                            WebDriverWait(driver, 5).until(
-                                EC.element_to_be_clickable((By.XPATH, xpath))
-                            )
-                            buttons[0].click()
-                            button_found = True
-                            break
-                    except Exception as e:
-                        logger.debug(f"XPath '{xpath}' 查找按钮失败: {e}")
-            
-            if button_found:
-                # 等待操作完成
-                logger.info("等待操作完成...")
-                time.sleep(8)  # 增加等待时间确保操作完成
+                # 等待5秒，确保页面响应
+                logger.info("等待5秒...")
+                time.sleep(5)
                 
-                # 重新获取API密钥信息
-                self.anti_detection.random_delay(3, 7)
-                api_info = self.get_api_key_info()
-                
-                # 修复逻辑：hasExpired为false表示未过期，true表示已过期
-                data = api_info.get('data', {})
-                has_expired = data.get('hasExpired', True)
-                
-                # 检查API密钥是否真的发生了变化
-                new_api_key = data.get('apiKeyMask', '')
-                new_expire_time = data.get('expireTime', '')
-                
-                logger.info(f"重置后API密钥: {new_api_key}")
-                logger.info(f"重置后过期时间: {new_expire_time}")
-                
-                # 检查是否真的重置了（API密钥或过期时间应该发生变化）
-                if new_expire_time and new_expire_time != '2026-03-04 15:32':
-                    logger.info("API密钥重置成功，过期时间已更新")
-                    return True
-                else:
-                    logger.warning("API密钥重置失败，过期时间未发生变化")
-                    logger.warning(f"当前过期时间: {new_expire_time}")
+                # 查找并点击第二个按钮
+                try:
+                    second_button = driver.find_element(By.CSS_SELECTOR, ".btn_L39M")
+                    logger.info("找到第二个按钮 .btn_L39M，准备点击...")
+                    WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, ".btn_L39M"))
+                    )
+                    second_button.click()
+                    logger.info("第二个按钮点击成功")
+                except Exception as e:
+                    logger.error(f"未找到第二个按钮 .btn_L39M: {e}")
                     return False
             else:
-                logger.warning("未找到按钮元素，尝试截图保存页面状态")
-                # 保存页面截图和HTML源码用于调试
+                # 已过期：一步点击
+                logger.info("已过期模式：执行一步点击")
+                
+                # 查找并点击按钮
                 try:
-                    driver.save_screenshot("page_debug.png")
-                    with open("page_source.html", "w", encoding="utf-8") as f:
-                        f.write(driver.page_source)
-                    logger.info("页面截图和源码已保存用于调试")
+                    button = driver.find_element(By.CSS_SELECTOR, ".btn_ib1Q")
+                    logger.info("找到按钮 .btn_ib1Q，准备点击...")
+                    WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, ".btn_ib1Q"))
+                    )
+                    button.click()
+                    logger.info("按钮点击成功")
                 except Exception as e:
-                    logger.error(f"保存调试信息失败: {e}")
+                    logger.error(f"未找到按钮 .btn_ib1Q: {e}")
+                    return False
+            
+            # 等待操作完成
+            logger.info("等待操作完成...")
+            time.sleep(8)  # 增加等待时间确保操作完成
+            
+            # 重新获取API密钥信息
+            self.anti_detection.random_delay(3, 7)
+            api_info = self.get_api_key_info()
+            
+            # 修复逻辑：hasExpired为false表示未过期，true表示已过期
+            data = api_info.get('data', {})
+            has_expired = data.get('hasExpired', True)
+            
+            if not has_expired:
+                logger.info("API密钥重置成功")
+                return True
+            else:
+                logger.warning("重新生成后API仍然过期")
                 return False
                 
         except Exception as e:
@@ -309,9 +273,9 @@ class APIManager:
             is_expired = self.check_api_expiration(api_info)
             
             if is_expired:
-                # API已过期，执行浏览器模拟重置操作
+                # API已过期，执行浏览器模拟重置操作（一步点击）
                 logger.info("API密钥已过期，开始模拟浏览器操作重置...")
-                success = self.simulate_browser_reset()
+                success = self.simulate_browser_reset(is_expiring=False)
                 
                 if success:
                     logger.info("浏览器模拟重置操作成功，API密钥已更新")
@@ -332,11 +296,9 @@ class APIManager:
                         # 获取当前系统日期（UTC+8）
                         current_date = datetime.now(UTC8).date()
                         
-                        # 调试模式：即将过期判断恒为真
-                        # if expire_date == current_date:
-                        if True:  # 调试模式，强制触发重置
-                            logger.info("[调试模式] API密钥即将过期，开始模拟浏览器操作重置...")
-                            success = self.simulate_browser_reset()
+                        if expire_date == current_date:
+                            logger.info("API密钥即将过期，开始模拟浏览器操作重置...")
+                            success = self.simulate_browser_reset(is_expiring=True)
                             
                             if success:
                                 logger.info("浏览器模拟重置操作成功，API密钥已更新")
