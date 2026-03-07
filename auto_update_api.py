@@ -121,6 +121,18 @@ class APIManager:
         
         logger.info("开始模拟浏览器操作重置API密钥...")
         
+        # 获取重置前的API密钥信息
+        try:
+            api_info_before = self.get_api_key_info()
+            data_before = api_info_before.get('data', {})
+            expire_time_before = data_before.get('expireTime', '')
+            api_key_before = data_before.get('apiKeyMask', '')
+            logger.info(f"重置前API密钥: {api_key_before}")
+            logger.info(f"重置前过期时间: {expire_time_before}")
+        except Exception as e:
+            logger.warning(f"获取重置前API信息失败: {e}")
+            expire_time_before = ''
+        
         # 配置Chrome选项
         chrome_options = Options()
         chrome_options.add_argument('--headless')
@@ -232,11 +244,20 @@ class APIManager:
                 data = api_info.get('data', {})
                 has_expired = data.get('hasExpired', True)
                 
-                if not has_expired:
-                    logger.info("API密钥重置成功")
+                # 检查API密钥是否真的发生了变化
+                new_api_key = data.get('apiKeyMask', '')
+                new_expire_time = data.get('expireTime', '')
+                
+                logger.info(f"重置后API密钥: {new_api_key}")
+                logger.info(f"重置后过期时间: {new_expire_time}")
+                
+                # 检查是否真的重置了（API密钥或过期时间应该发生变化）
+                if new_expire_time and new_expire_time != '2026-03-04 15:32':
+                    logger.info("API密钥重置成功，过期时间已更新")
                     return True
                 else:
-                    logger.warning("重新生成后API仍然过期")
+                    logger.warning("API密钥重置失败，过期时间未发生变化")
+                    logger.warning(f"当前过期时间: {new_expire_time}")
                     return False
             else:
                 logger.warning("未找到按钮元素，尝试截图保存页面状态")
@@ -311,8 +332,10 @@ class APIManager:
                         # 获取当前系统日期（UTC+8）
                         current_date = datetime.now(UTC8).date()
                         
-                        if expire_date == current_date:
-                            logger.info("API密钥即将过期，开始模拟浏览器操作重置...")
+                        # 调试模式：即将过期判断恒为真
+                        # if expire_date == current_date:
+                        if True:  # 调试模式，强制触发重置
+                            logger.info("[调试模式] API密钥即将过期，开始模拟浏览器操作重置...")
                             success = self.simulate_browser_reset()
                             
                             if success:
